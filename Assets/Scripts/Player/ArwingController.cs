@@ -1,43 +1,95 @@
+using Chapter.Command;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.SceneManagement;
 
-public class ArwingController : MonoBehaviour
+namespace Chapter.Command
 {
-    CharacterController charController;
-
-    [SerializeField] float moveSpeed = 5f;
-    Vector2 moveDirection = Vector2.zero;
-
-    [SerializeField] InputActionAsset inputActions;
-    InputAction move;
-
-    void OnEnable()
+    public class ArwingController : MonoBehaviour
     {
-        inputActions.FindActionMap("Player").Enable();
-    }
+        CharacterController charController;
 
-    void OnDisable()
-    {
-        inputActions.FindActionMap("Player").Disable();
-    }
+        [SerializeField] float moveSpeed = 5f;
+        Vector2 moveDirection = Vector2.zero;
 
-    void Awake()
-    {
-        charController = GetComponent<CharacterController>();
+        [SerializeField] float maxHealth = 100f;
+        float currentHealth;
+        float previousHealth;
 
-        move = InputSystem.actions.FindAction("Move");
-    }
+        [SerializeField] InputActionAsset inputActions;
+        InputAction move;
 
-    void Update()
-    {
-        
-    }
+        [SerializeField] Invoker commandInvoker;
+        Command damagePlayer;
 
-    void FixedUpdate()
-    {
-        moveDirection = move.ReadValue<Vector2>();
-        Vector3 movement = new Vector3(moveDirection.x, moveDirection.y, 0);
+        void OnEnable()
+        {
+            inputActions.FindActionMap("Player").Enable();
+        }
 
-        charController.Move(movement * moveSpeed * Time.deltaTime);
+        void OnDisable()
+        {
+            inputActions.FindActionMap("Player").Disable();
+        }
+
+        void Awake()
+        {
+            charController = GetComponent<CharacterController>();
+            currentHealth = maxHealth;
+            previousHealth = currentHealth;
+            Debug.Log(currentHealth);
+
+            move = InputSystem.actions.FindAction("Move");
+
+            damagePlayer = new DamagePlayer(gameObject.GetComponent<ArwingController>());
+        }
+
+        void Update()
+        {
+
+        }
+
+        void FixedUpdate()
+        {
+            moveDirection = move.ReadValue<Vector2>();
+            Vector3 movement = new Vector3(moveDirection.x, moveDirection.y, 0);
+
+            charController.Move(movement * moveSpeed * Time.deltaTime);
+        }
+
+        public void DamagePlayer()
+        {
+            previousHealth = currentHealth;
+            if (currentHealth > 0)
+            {
+                currentHealth -= 10f;
+            }
+            else
+            {
+                currentHealth = 0;
+                SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+            }
+            Debug.Log(currentHealth);
+        }
+
+        public void ReverseDamage()
+        {
+            currentHealth = previousHealth;
+            Debug.Log(currentHealth);
+        }
+
+        void OnTriggerEnter(Collider other)
+        {
+            if (other.gameObject.CompareTag("Enemy"))
+            {
+                commandInvoker.ExecuteCommand(damagePlayer);
+            }
+
+            if (other.gameObject.CompareTag("Powerup"))
+            {
+                commandInvoker.UndoCommand(damagePlayer);
+                Destroy(other.gameObject);
+            }
+        }
     }
 }
